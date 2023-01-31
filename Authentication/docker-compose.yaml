@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  auth-container-universidad-distrital:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-container-universidad-distrital
+    ports:
+      - "8080:8080"
+    restart: always
+    #environment:
+    #  - TZ=America/Bogota
+    #  - REDIS_HOST=localhost
+    #  - REDIS_PORT=6300
+    #  - DEPLOYMENT=pre
+    #  - PYTHONPATH=/app
+    #  - DBHOST=34.70.1.169
+    #  - DBUSER=easydata
+    #  - DBPASSWORD=easydatapasswordofmysql
+    #  - DB=db
+    #  - CAPTCHASECRET=6Lc7rrIiAAAAACAPTwE2iVldDrVyv3HBA0orkSq_
+    network_mode: "host"
+

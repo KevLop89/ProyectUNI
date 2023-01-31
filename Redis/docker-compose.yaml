@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  redis:
+    image: "redis:6.2.6-alpine"
+    restart: always
+    container_name: redis-cache-container
+    command: redis-server
+    ports:
+      - "6300:6379"
+    network_mode: host
