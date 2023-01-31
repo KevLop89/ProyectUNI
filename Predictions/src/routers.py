@@ -45,18 +45,21 @@ async def token_validation_external(request: Request, response: Response, sheet_
             "columns": columns,
             "data": values
         }
-        #traer los datos solicitados segun el filtro de ingenieria
-        for i in  table["data"]:
-            if i[42] == ingenieria:
-                datos_filtro.append(table["data"][iterador_i])
-            iterador_i += 1
-            
-        resultado = {
-            "columns": columns,
-            "data": datos_filtro
-        }
 
-        return resultado
+        if ingenieria != 'TOTAL FACULTAD':
+            #traer los datos solicitados segun el filtro de ingenieria
+            for i in  table["data"]:
+                if i[42] == ingenieria:
+                    datos_filtro.append(table["data"][iterador_i])
+                iterador_i += 1
+                
+            resultado = {
+                "columns": columns,
+                "data": datos_filtro
+            }
+            return resultado
+        else:
+            return table
 
     except Exception as e:
         response.status_code = ResponseStatus.HTTP_500_INTERNAL_SERVER_ERROR
