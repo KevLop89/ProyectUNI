@@ -74,12 +74,17 @@ async def token_validation_external(request: Request, response: Response, sheet_
 async def token_validation_external(request: Request, response: Response,tipoCarrera: str, file: UploadFile = File(...)):
     try:
         
-        if file.filename.endswith('.xlsx'):
-            table = xlsx_reader(file.file.read())
-
-        response_json = {"table": table}
-
-        return response_json
+        aux = pd.read_excel('C:/Users/anali/Downloads/Libro1.xlsx')
+        aux = aux.dropna(axis=1, how='all')
+        aux = aux.replace('Á', 'A', regex=True).replace('É', 'E', regex=True).replace('Í','I', regex=True).replace('Ó','O', regex=True).replace('Ú','U', regex=True).replace('BOGOTÁ D.C', 'BOGOTA D.C.').replace('BOGOTA D.C', 'BOGOTA D.C.').replace('SANTAFE', 'SANTA FE').replace('RAFAEL URIBE', 'RAFAEL URIBE URIBE').replace("Ü", "U", regex=True)
+        columns = list(aux.columns)
+        values = aux.values.tolist()
+        table = {
+            "columns": columns,
+            "data": values
+        }
+        
+        return table
 
 
     except Exception as e:
