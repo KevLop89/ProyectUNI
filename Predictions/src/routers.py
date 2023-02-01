@@ -42,6 +42,7 @@ async def token_validation_external(request: Request, response: Response, sheet_
         columns = list(initial_data.columns)
         values = initial_data.values.tolist()
         table = {
+            "columns": columns,
             "data": values
         }
 
@@ -53,6 +54,7 @@ async def token_validation_external(request: Request, response: Response, sheet_
                 iterador_i += 1
                 
             resultado = {
+                "columns": columns,
                 "data": datos_filtro
             }
             return resultado
