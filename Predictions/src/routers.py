@@ -19,8 +19,14 @@ import numpy as np
 import json as json
 router = APIRouter()
 from .swagger import *
+import sys
+from pydantic import BaseModel
+from flask import Flask, jsonify, request
+from flask_cors import CORS, cross_origin
 
 import requests
+class Data(BaseModel):
+    data:list
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -71,16 +77,14 @@ async def token_validation_external(request: Request, response: Response, sheet_
             )
 
 @router.post("/predictions/carga_limpieza", response_description="Limpia el archivo excel con el parametro tipo carrera")
-async def token_validation_external(request: Request, response: Response,tipoCarrera: str, file: UploadFile = File(...)):
+async def token_validation_external(response: Response,request: Request, data:Data):
     try:
-        
-        aux = pd.read_excel('C:/Users/anali/Downloads/Libro1.xlsx')
+        datos = json.dumps(data.data)
+        aux = pd.read_json(datos)
         aux = aux.dropna(axis=1, how='all')
         aux = aux.replace('Á', 'A', regex=True).replace('É', 'E', regex=True).replace('Í','I', regex=True).replace('Ó','O', regex=True).replace('Ú','U', regex=True).replace('BOGOTÁ D.C', 'BOGOTA D.C.').replace('BOGOTA D.C', 'BOGOTA D.C.').replace('SANTAFE', 'SANTA FE').replace('RAFAEL URIBE', 'RAFAEL URIBE URIBE').replace("Ü", "U", regex=True)
-        columns = list(aux.columns)
         values = aux.values.tolist()
         table = {
-            "columns": columns,
             "data": values
         }
         
