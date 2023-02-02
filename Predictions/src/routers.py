@@ -26,6 +26,7 @@ from flask_cors import CORS, cross_origin
 
 import requests
 class Data(BaseModel):
+    columns: list
     data:list
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -83,8 +84,10 @@ async def token_validation_external(response: Response,request: Request, data:Da
         aux = pd.read_json(datos)
         aux = aux.dropna(axis=1, how='all')
         aux = aux.replace('Á', 'A', regex=True).replace('É', 'E', regex=True).replace('Í','I', regex=True).replace('Ó','O', regex=True).replace('Ú','U', regex=True).replace('BOGOTÁ D.C', 'BOGOTA D.C.').replace('BOGOTA D.C', 'BOGOTA D.C.').replace('SANTAFE', 'SANTA FE').replace('RAFAEL URIBE', 'RAFAEL URIBE URIBE').replace("Ü", "U", regex=True)
+        columns = data.columns
         values = aux.values.tolist()
         table = {
+            "columns": columns,
             "data": values
         }
         
