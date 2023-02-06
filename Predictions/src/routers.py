@@ -23,6 +23,7 @@ import sys
 from pydantic import BaseModel
 from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
+from scipy import stats
 
 import requests
 class Data(BaseModel):
@@ -36,7 +37,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def healthcheck(request: Request, response: Response):
     return {"status": "ok"}
 
-
+#primera carga de datos y filtro 
 @router.post("/predictions/excelToArray", response_description="Transforma el excel en array")
 async def token_validation_external(request: Request, response: Response, sheet_name: str, ingenieria: str, file: UploadFile = File(...)):
     #Carga inical de los datos y filtro de busqueda
@@ -77,6 +78,7 @@ async def token_validation_external(request: Request, response: Response, sheet_
             message="Error"
             )
 
+#limpieza de los datos segun el fintro anterior
 @router.post("/predictions/carga_limpieza", response_description="Limpia el archivo excel con el parametro tipo carrera")
 async def token_validation_external(response: Response,request: Request, data:Data):
     try:
@@ -121,6 +123,87 @@ async def token_validation_external(request: Request, response: Response,tipoCar
             code=500,
             message="Error"
             )
+
+# trasposicion de la data -  PENDIENTES BOX-COX y VARIABLES
+@router.post("/predictions/transform", response_description="Limpia el archivo excel sin parametros")
+async def token_validation_external(response: Response,data:Data, ingenieria:str,semestre:int, trans:str):
+    try:
+        
+        aux = pd.DataFrame(data.data, columns=data.columns)
+        num_var = ['biologia','quimica','fisica','sociales','aptitud_verbal','espanol_literatura','aptitud_matematica',
+               'condicion_matematica','filosofia','historia','geografia','idioma','puntos_icfes',
+               'puntos_homologados','nota','promedio']
+    
+        aux[num_var] = aux[num_var].astype(str).astype(float)
+        opc_var = aux.columns
+        trans = trans.split(',')
+        # opc_tran_num = ['logaritmo','estandarizar','minmax','Box-Cox', 'Yeo-Johnson']
+        opc_tran_num = trans
+
+        #opc_tran_num = transformacion
+
+        # validacion ingenieria
+        if ingenieria == False:
+            aux = aux
+        else:
+            aux = aux[aux['proyecto'] == ingenieria]
+        # # validacion semestre
+        if semestre == False:
+            aux = aux
+        else:
+            #semestre = str(semestre)
+            aux = aux[aux['semestre_asignatura'] == semestre]
+        
+        # # validacion variables (PENDIENTE)
+        # # if var_sel == False:
+        # #     aux = aux[opc_var]
+        # # else:
+        # #     aux = aux[var_sel]
+        
+        #aux = aux.reset_index().drop(columns = 'index')
+        if aux.shape[0] > 0:
+            for col in aux[num_var]:
+                if aux[col].dtype == 'object':
+                    print('La variable ' + col + ' es de tipo character/object. No puede ser transformada.')
+                else:
+                    for trans in opc_tran_num:
+                        if trans == 'logaritmo':                       
+                            aux[col+'_'+trans] = np.log10(aux[col])
+                            if (aux[col].all() == False):
+                                aux[col+'_'+trans] = 0.000000001
+                        elif trans == 'estandarizar':
+                            aux[col+'_'+trans] = (aux[col] - aux[col].values.mean()) / aux[col].values.std()
+                            aux[col+'_'+trans].fillna('NaN', inplace=True)     
+                        elif trans == 'minmax':
+                            aux[col+'_'+trans] = (aux[col] - aux[col].values.min()) / aux[col].values.max()
+                            aux[col+'_'+trans].fillna('NaN', inplace=True)
+                        #PENDIENTE
+                        elif trans == 'Box-Cox':
+                            aux[col] = aux[col] + 0.000000001
+                            aux[col+'_'+trans], _ = stats.boxcox(aux[col])
+                        elif trans == 'Yeo-Johnson':
+                            aux[col+'_'+trans], _ = stats.yeojohnson(aux[col])
+                        else:              
+                            print('No se ha encontrado una transformación adecuada. Seleccione una transformación')           
+                    print('La variable ' + col + ' ha sido transformada bajo los siguientes criterios ' + str(opc_tran_num))
+        
+        columns = list(aux.columns)
+        values = aux.values.tolist()
+        table = {
+            "columns": columns,
+            "data": values
+        }
+        return table
+
+    except Exception as e:
+        response.status_code = ResponseStatus.HTTP_500_INTERNAL_SERVER_ERROR
+        import traceback
+        return ErrorResponseModel(
+            str(traceback.format_exc()),
+            code=500,
+            message="Error"
+            )
+
 
 @router.post("/predictions/limpieza", response_description="Limpia el archivo excel sin parametros")
 async def token_validation_external(request: Request, response: Response, file: UploadFile = File(...)):
