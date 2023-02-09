@@ -8,6 +8,7 @@ import traceback
 from typing import Union
 from fastapi import FastAPI, Header, UploadFile, File
 from datetime import timedelta, datetime
+from sklearn.preprocessing import PowerTransformer
 import jwt
 
 from .redis_cache import *
@@ -21,9 +22,8 @@ router = APIRouter()
 from .swagger import *
 import sys
 from pydantic import BaseModel
-from flask import Flask, jsonify, request
-from flask_cors import CORS, cross_origin
 from scipy import stats
+from scipy.stats import boxcox
 
 import requests
 class Data(BaseModel):
@@ -82,17 +82,17 @@ async def token_validation_external(request: Request, response: Response, sheet_
 @router.post("/predictions/carga_limpieza", response_description="Limpia el archivo excel con el parametro tipo carrera")
 async def token_validation_external(response: Response,request: Request, data:Data):
     try:
-        datos = json.dumps(data.data)
-        aux = pd.read_json(datos)
-        aux = aux.dropna(axis=1, how='all')
-        aux = aux.replace('Á', 'A', regex=True).replace('É', 'E', regex=True).replace('Í','I', regex=True).replace('Ó','O', regex=True).replace('Ú','U', regex=True).replace('BOGOTÁ D.C', 'BOGOTA D.C.').replace('BOGOTA D.C', 'BOGOTA D.C.').replace('SANTAFE', 'SANTA FE').replace('RAFAEL URIBE', 'RAFAEL URIBE URIBE').replace("Ü", "U", regex=True)
-        columns = data.columns
+        aux = pd.DataFrame(data.data, columns=data.columns)
+        aux = aux.dropna(axis=1, how='all') 
+        var_mayus=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','Ñ','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+        var_min=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','ñ','o','p','q','r','s','t','u','v','w','x','y','z']
+        aux = aux.replace('Á', 'A', regex=True).replace('É', 'E', regex=True).replace('Í','I', regex=True).replace('Ó','O', regex=True).replace('Ú','U', regex=True).replace('BOGOTÁ D.C', 'BOGOTA D.C.').replace('BOGOTA D.C', 'BOGOTA D.C.').replace('SANTAFE', 'SANTA FE').replace('RAFAEL URIBE', 'RAFAEL URIBE URIBE').replace("Ü", "U", regex=True).replace('a', 'A', regex=True).replace(var_min,var_mayus, regex=True)
+        columns = list(aux.columns)
         values = aux.values.tolist()
         table = {
             "columns": columns,
             "data": values
         }
-        
         return table
 
 
@@ -180,7 +180,8 @@ async def token_validation_external(response: Response,data:Data, ingenieria:str
                         #PENDIENTE
                         elif trans == 'Box-Cox':
                             aux[col] = aux[col] + 0.000000001
-                            aux[col+'_'+trans], _ = stats.boxcox(aux[col])
+                            aux[col+'_'+trans], _ = boxcox(aux[col])
+                            
                         elif trans == 'Yeo-Johnson':
                             aux[col+'_'+trans], _ = stats.yeojohnson(aux[col])
                         else:              
