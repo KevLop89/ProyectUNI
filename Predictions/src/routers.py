@@ -8,7 +8,6 @@ import traceback
 from typing import Union
 from fastapi import FastAPI, Header, UploadFile, File
 from datetime import timedelta, datetime
-from sklearn.preprocessing import PowerTransformer
 import jwt
 
 from .redis_cache import *
@@ -205,17 +204,115 @@ async def token_validation_external(response: Response,data:Data, ingenieria:str
             message="Error"
             )
 
+#transpose Data
+@router.post("/predictions/transpose", response_description="Limpia el archivo excel sin parametros")
+async def transpose_initial_data(response: Response, data:Data, ingenieria:str ):
 
-@router.post("/predictions/limpieza", response_description="Limpia el archivo excel sin parametros")
-async def token_validation_external(request: Request, response: Response, file: UploadFile = File(...)):
     try:
+
+        df = pd.DataFrame(data.data, columns=data.columns)
+        tr_df = df.loc[df['proyecto'] == ingenieria]
+        tr_df['asignatura'] = tr_df['asignatura'].str.strip()
+        tr_df['proyecto'] = tr_df['proyecto'].str.strip()
         
-        if file.filename.endswith('.xlsx'):
-            table = xlsx_reader(file.file.read())
+        tr_df['asignatura'] = tr_df['asignatura'].str.replace('\s+', ' ', regex=True)
+        tr_df['proyecto'] = tr_df['proyecto'].str.replace('\s+', ' ', regex=True)
 
-        response_json = {"table": table}
+        
+        
+        aux = pd.read_excel('./Homologaciones_materia_agrupado.xlsx', sheet_name='limpieza')  #### relacionarlo con el excel que se carga en la homologación
+        aux['asignatura'] = aux['asignatura'].str.strip()   
+        aux['proyecto'] = aux['proyecto'].str.strip()   
+        aux = aux[aux['proyecto'] == ingenieria] #### Este viene de las convenciones
+        # aux = aux[aux['validacion'] == 'ok']  
+        aux1 = aux[['proyecto','asignatura','asignatura_homologado']]
+            
+        tr_df = tr_df.merge(aux1, on = ['proyecto','asignatura'], how = 'left')
+        tr_df['asignatura'] = np.where(tr_df['asignatura_homologado'].isnull(), tr_df.asignatura, tr_df.asignatura_homologado)
+        
+        tr_df['asignatura_homologado'] = np.where(tr_df['asignatura_homologado'].isnull(), tr_df.asignatura, tr_df.asignatura_homologado)
+        
+        # tr_df = tr_df.drop(columns = 'asignatura_homologado')
+        
+        aux2 = aux[['proyecto','asignatura_homologado','semestre','creditos','nucleo']]
+        tr_df = tr_df.merge(aux2, on = ['proyecto','asignatura_homologado'], how = 'left')
+        tr_df = tr_df[tr_df['creditos'].notna()]
+        
+        remove_colums = [
+            "profundizacion",
+            "valor_profundizacion",
+            "profundizacion_dos",
+            "valor_profundizacion_dos",
+            "profundizacion_tres",
+            "valor_profundizacion_tres"]
 
-        return response_json
+        tr_df.drop(remove_colums, axis=1, errors='ignore')
+        
+        if {"interdiciplinar", "codiogo_interdiciplinar"}.issubset(tr_df.columns) == True:
+            tr_df["interdiciplinar"].fillna("NA", inplace=True)
+            tr_df["codiogo_interdiciplinar"].fillna("NA", inplace=True)
+
+            index_pivot = ["llave", "proyecto", "ano_ingreso", "semestre_ingreso", "metodologia", "modalidad", "nivel", "estrato",
+                        "genero", "departamento", "municipio", "localidad", "tipo_colegio", "localidad_colegio",
+                        "calendario_colegio", "municipio_colegio", "departamento_colegio", "inscripcion", "biologia", "quimica",
+                        "fisica", "sociales", "aptitud_verbal", "espanol_literatura", "aptitud_matematica", "condicion_matematica",
+                        "filosofia", "historia", "geografia", "idioma", "interdiciplinar", "codiogo_interdiciplinar", "puntos_icfes",
+                        "puntos_homologados", "estado_actual"]
+        else:
+
+            index_pivot = ["llave", "proyecto", "ano_ingreso", "semestre_ingreso", "metodologia", "modalidad", "nivel", "estrato",
+                        "genero", "departamento", "municipio", "localidad", "tipo_colegio", "localidad_colegio",
+                        "calendario_colegio", "municipio_colegio", "departamento_colegio", "inscripcion", "biologia", "quimica",
+                        "fisica", "sociales", "aptitud_verbal", "espanol_literatura", "aptitud_matematica", "condicion_matematica",
+                        "filosofia", "historia", "geografia", "idioma", "puntos_icfes",
+                        "puntos_homologados", "estado_actual"]
+
+        tr_df['semestre'] = tr_df['semestre'].apply(str)
+        tr_df['semestre'] = tr_df["semestre"].astype(
+            str).apply(lambda x: x.replace('.0', ''))
+        tr_df["asignatura_homologado"] = "SEM_" + \
+            tr_df.semestre.str.cat(tr_df.asignatura_homologado, sep="-")
+        
+        transpose_df = np.round(tr_df.pivot_table(
+            index=index_pivot, columns="asignatura_homologado", values="nota", aggfunc=['mean', "size"]), 2)
+
+        transpose_df.columns = ["_".join(tup)
+                                for tup in transpose_df.columns.to_flat_index()]
+
+        transpose_df = transpose_df.reset_index()
+
+        transpose_df.columns = [c.replace("mean", "NOTA")
+                                for c in list(transpose_df.columns)]
+
+        transpose_df.columns = [c.replace("size", "VECES")
+                                for c in list(transpose_df.columns)]
+        
+        transpose_df2 = np.round(tr_df.pivot_table(
+            index=index_pivot, columns="asignatura_homologado", values="creditos", aggfunc=['mean']), 2)
+        
+        transpose_df2.columns = ["_".join(tup)
+                                for tup in transpose_df2.columns.to_flat_index()]
+
+        transpose_df2 = transpose_df2.reset_index()
+
+        transpose_df2.columns = [c.replace("mean", "CREDITOS")
+                                for c in list(transpose_df2.columns)]
+        transpose_df = transpose_df.merge(transpose_df2, how = 'left')
+        # transpose_df.columns = transpose_df.columns.str.lower()
+
+        # if write_table == "t":
+        #     transpose_df.to_csv(path_output + "/transpose_df",
+        #                         sep=";", encoding='utf8')
+        transpose_df = transpose_df.fillna("NO CURSADO") 
+        print(transpose_df)
+        columns = list(transpose_df.columns)
+        values = transpose_df.values.tolist()
+        table = {
+            "columns": columns,
+            "data": values
+        }
+        return table
+    
     except Exception as e:
         response.status_code = ResponseStatus.HTTP_500_INTERNAL_SERVER_ERROR
         import traceback
