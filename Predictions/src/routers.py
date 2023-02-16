@@ -23,12 +23,16 @@ import sys
 from pydantic import BaseModel
 from scipy import stats
 from scipy.stats import boxcox
+import random
 
 import requests
 class Data(BaseModel):
     columns: list
     data:list
 
+def add_random_number(row):
+    return row + np.random.uniform(0.00001, 0.00005)
+                                   
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
@@ -129,11 +133,28 @@ async def token_validation_external(response: Response,data:Data, ingenieria:str
     try:
         
         aux = pd.DataFrame(data.data, columns=data.columns)
-        num_var = ['biologia','quimica','fisica','sociales','aptitud_verbal','espanol_literatura','aptitud_matematica',
-               'condicion_matematica','filosofia','historia','geografia','idioma','puntos_icfes',
-               'puntos_homologados','nota','promedio']
-    
+        num_var = ['biologia', 'quimica', 'fisica', 'sociales', 'aptitud_verbal', 'espanol_literatura', 'aptitud_matematica', 'condicion_matematica', 'filosofia', 'historia', 'geografia', 'idioma', 'interdiciplinar', 'codiogo_interdiciplinar', 
+               'puntos_icfes', 'puntos_homologados', 'NOTA_SEM_1-CALCULO DIFERENCIAL', 'NOTA_SEM_1-CATEDRA DEMOCRACIA Y CIUDADANIA', 'NOTA_SEM_1-CATEDRA FRANCISCO JOSE DE CALDAS', 'NOTA_SEM_1-LOGICA', 
+               'NOTA_SEM_1-PRODUCCION Y COMPRENSION DE TEXTOS', 'NOTA_SEM_1-PROGRAMACION BASICA', 'NOTA_SEM_1-SEMINARIO DE INGENIERIA', 'NOTA_SEM_10-AUDITORIA II', 'NOTA_SEM_10-DESARROLLO DEL ESPIRITU EMPRESARIAL', 'NOTA_SEM_10-GEOMATICA II', 
+               'NOTA_SEM_10-GESTION EMPRESARIAL IV', 'NOTA_SEM_10-GESTION TECNOLOGICA', 'NOTA_SEM_10-HOMBRE SOCIEDAD Y ECOLOGIA', 'NOTA_SEM_10-INTELIGENCIA ARTIFICIAL II', 'NOTA_SEM_10-MULTIMEDIA', 'NOTA_SEM_2-ALGEBRA LINEAL', 'NOTA_SEM_2-CALCULO INTEGRAL', 
+               'NOTA_SEM_2-FISICA I: MECANICA NEWTONIANA', 'NOTA_SEM_2-PROGRAMACION ORIENTADA A OBJETOS', 'NOTA_SEM_3-CALCULO MULTIVARIADO', 'NOTA_SEM_3-ECUACIONES DIFERENCIALES', 'NOTA_SEM_3-FISICA II: ELECTROMAGNETISMO', 'NOTA_SEM_3-PROGRAMACION AVANZADA',
+               'NOTA_SEM_3-TEORIA DE SISTEMAS', 'NOTA_SEM_4-ANALISIS DE SISTEMAS', 'NOTA_SEM_4-MATEMATICAS DISCRETAS', 'NOTA_SEM_4-MATEMATICAS ESPECIALES', 'NOTA_SEM_4-MODELOS DE PROGRAMACION I', 'NOTA_SEM_5-ARQUITECTURA DE COMPUTADORES Y LABORATORIO', 
+               'NOTA_SEM_5-CIENCIAS DE LA COMPUTACION I', 'NOTA_SEM_5-FISICA III: ONDAS Y FISICA MODERNA', 'NOTA_SEM_5-PROBABILIDAD', 'NOTA_SEM_6-CIBERNETICA I', 'NOTA_SEM_6-CIENCIAS DE LA COMPUTACION II', 'NOTA_SEM_6-ESTADISTICA', 
+               'NOTA_SEM_6-HISTORIA Y CULTURA COLOMBIANA', 'NOTA_SEM_6-INVESTIGACION DE OPERACIONES II', 'NOTA_SEM_6-REDES DE COMUNICACIONES I', 'NOTA_SEM_7-CIBERNETICA II', 'NOTA_SEM_7-INVESTIGACION DE OPERACIONES III', 'NOTA_SEM_8-CIBERNETICA III', 
+               'NOTA_SEM_8-INGENIERIA ECONOMICA', 'NOTA_SEM_8-PLANEACION DE SISTEMAS DE INFORMACION', 'NOTA_SEM_9-AUDITORIA I', 'NOTA_SEM_9-FACTORES HUMANOS', 'NOTA_SEM_9-GEOMATICA I', 'NOTA_SEM_9-SISTEMAS OPERATIVOS', 'VECES_SEM_1-CALCULO DIFERENCIAL',
+               'VECES_SEM_1-CATEDRA DEMOCRACIA Y CIUDADANIA', 'VECES_SEM_1-CATEDRA FRANCISCO JOSE DE CALDAS', 'VECES_SEM_1-LOGICA', 'VECES_SEM_1-PRODUCCION Y COMPRENSION DE TEXTOS', 'VECES_SEM_1-PROGRAMACION BASICA', 'VECES_SEM_1-SEMINARIO DE INGENIERIA', 
+               'VECES_SEM_10-AUDITORIA II', 'VECES_SEM_10-DESARROLLO DEL ESPIRITU EMPRESARIAL', 'VECES_SEM_10-GEOMATICA II', 'VECES_SEM_10-GESTION EMPRESARIAL IV', 'VECES_SEM_10-GESTION TECNOLOGICA', 'VECES_SEM_10-HOMBRE SOCIEDAD Y ECOLOGIA', 
+               'VECES_SEM_10-INTELIGENCIA ARTIFICIAL II', 'VECES_SEM_10-MULTIMEDIA', 'VECES_SEM_2-ALGEBRA LINEAL', 'VECES_SEM_2-CALCULO INTEGRAL', 'VECES_SEM_2-FISICA I: MECANICA NEWTONIANA', 'VECES_SEM_2-PROGRAMACION ORIENTADA A OBJETOS', 
+               'VECES_SEM_3-CALCULO MULTIVARIADO', 'VECES_SEM_3-ECUACIONES DIFERENCIALES', 'VECES_SEM_3-FISICA II: ELECTROMAGNETISMO', 'VECES_SEM_3-PROGRAMACION AVANZADA', 'VECES_SEM_3-TEORIA DE SISTEMAS', 'VECES_SEM_4-ANALISIS DE SISTEMAS', 
+               'VECES_SEM_4-MATEMATICAS DISCRETAS', 'VECES_SEM_4-MATEMATICAS ESPECIALES', 'VECES_SEM_4-MODELOS DE PROGRAMACION I', 'VECES_SEM_5-ARQUITECTURA DE COMPUTADORES Y LABORATORIO', 'VECES_SEM_5-CIENCIAS DE LA COMPUTACION I', 
+               'VECES_SEM_5-FISICA III: ONDAS Y FISICA MODERNA', 'VECES_SEM_5-PROBABILIDAD', 'VECES_SEM_6-CIBERNETICA I', 'VECES_SEM_6-CIENCIAS DE LA COMPUTACION II', 'VECES_SEM_6-ESTADISTICA', 'VECES_SEM_6-HISTORIA Y CULTURA COLOMBIANA', 
+               'VECES_SEM_6-INVESTIGACION DE OPERACIONES II', 'VECES_SEM_6-REDES DE COMUNICACIONES I', 'VECES_SEM_7-CIBERNETICA II', 'VECES_SEM_7-INVESTIGACION DE OPERACIONES III', 'VECES_SEM_8-CIBERNETICA III', 'VECES_SEM_8-INGENIERIA ECONOMICA',
+               'VECES_SEM_8-PLANEACION DE SISTEMAS DE INFORMACION', 'VECES_SEM_9-AUDITORIA I', 'VECES_SEM_9-FACTORES HUMANOS', 'VECES_SEM_9-GEOMATICA I', 'VECES_SEM_9-SISTEMAS OPERATIVOS']      
+
+        aux[num_var] = aux[num_var].fillna(0).replace('NA',0)
         aux[num_var] = aux[num_var].astype(str).astype(float)
+        var_const = [col for col in aux.select_dtypes(include=['float']) if aux[col].median()==aux[col].quantile(0.99)]
+        aux[var_const] = aux[var_const].apply(add_random_number, axis = 1)
         opc_var = aux.columns
         trans = trans.split(',')
         # opc_tran_num = ['logaritmo','estandarizar','minmax','Box-Cox', 'Yeo-Johnson']
@@ -302,8 +323,8 @@ async def transpose_initial_data(response: Response, data:Data, ingenieria:str )
 
         # if write_table == "t":
         #     transpose_df.to_csv(path_output + "/transpose_df",
-        #                         sep=";", encoding='utf8')
-        transpose_df = transpose_df.fillna("NO CURSADO") 
+        #                         sep=";", encoding='utf8') 
+        transpose_df = transpose_df.fillna("NaN") 
         print(transpose_df)
         columns = list(transpose_df.columns)
         values = transpose_df.values.tolist()
