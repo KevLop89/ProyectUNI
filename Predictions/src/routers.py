@@ -9,7 +9,6 @@ from typing import Union
 from fastapi import FastAPI, Header, UploadFile, File
 from datetime import timedelta, datetime
 import jwt
-
 from .redis_cache import *
 from .models import *
 from .dependencies import *
@@ -24,8 +23,8 @@ from pydantic import BaseModel
 from scipy import stats
 from scipy.stats import boxcox
 import random
-
 import requests
+
 class Data(BaseModel):
     columns: list
     data:list
@@ -89,7 +88,7 @@ async def token_validation_external(response: Response,request: Request, data:Da
         aux = aux.dropna(axis=1, how='all') 
         var_mayus=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','Ñ','O','P','Q','R','S','T','U','V','W','X','Y','Z']
         var_min=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','ñ','o','p','q','r','s','t','u','v','w','x','y','z']
-        aux = aux.replace('Á', 'A', regex=True).replace('É', 'E', regex=True).replace('Í','I', regex=True).replace('Ó','O', regex=True).replace('Ú','U', regex=True).replace('BOGOTÁ D.C', 'BOGOTA D.C.').replace('BOGOTA D.C', 'BOGOTA D.C.').replace('SANTAFE', 'SANTA FE').replace('RAFAEL URIBE', 'RAFAEL URIBE URIBE').replace("Ü", "U", regex=True).replace('a', 'A', regex=True).replace(var_min,var_mayus, regex=True)
+        aux = aux.replace('Á', 'A', regex=True).replace('É', 'E', regex=True).replace('Í','I', regex=True).replace('Ó','O', regex=True).replace('Ú','U', regex=True).replace('BOGOTÁ D.C', 'BOGOTA D.C.').replace('BOGOTA D.C', 'BOGOTA D.C.').replace('SANTAFE', 'SANTA FE').replace('RAFAEL URIBE', 'RAFAEL URIBE URIBE').replace("Ü", "U", regex=True).replace('a', 'A', regex=True).replace(var_min,var_mayus, regex=True).replace('Ã', 'A', regex=True).replace("NONE","None")
         columns = list(aux.columns)
         values = aux.values.tolist()
         table = {
@@ -127,34 +126,24 @@ async def token_validation_external(request: Request, response: Response,tipoCar
             message="Error"
             )
 
-# trasposicion de la data -  PENDIENTES BOX-COX y VARIABLES
+# trasposicion de la data -  PENDIENTES VARIABLES y semestre_asignatura
 @router.post("/predictions/transform", response_description="Limpia el archivo excel sin parametros")
-async def token_validation_external(response: Response,data:Data, ingenieria:str,semestre:int, trans:str):
+async def token_validation_external(response: Response,data:Data, ingenieria:str, trans:str):
     try:
         
         aux = pd.DataFrame(data.data, columns=data.columns)
         num_var = ['biologia', 'quimica', 'fisica', 'sociales', 'aptitud_verbal', 'espanol_literatura', 'aptitud_matematica', 'condicion_matematica', 'filosofia', 'historia', 'geografia', 'idioma', 'interdiciplinar', 'codiogo_interdiciplinar', 
-               'puntos_icfes', 'puntos_homologados', 'NOTA_SEM_1-CALCULO DIFERENCIAL', 'NOTA_SEM_1-CATEDRA DEMOCRACIA Y CIUDADANIA', 'NOTA_SEM_1-CATEDRA FRANCISCO JOSE DE CALDAS', 'NOTA_SEM_1-LOGICA', 
-               'NOTA_SEM_1-PRODUCCION Y COMPRENSION DE TEXTOS', 'NOTA_SEM_1-PROGRAMACION BASICA', 'NOTA_SEM_1-SEMINARIO DE INGENIERIA', 'NOTA_SEM_10-AUDITORIA II', 'NOTA_SEM_10-DESARROLLO DEL ESPIRITU EMPRESARIAL', 'NOTA_SEM_10-GEOMATICA II', 
-               'NOTA_SEM_10-GESTION EMPRESARIAL IV', 'NOTA_SEM_10-GESTION TECNOLOGICA', 'NOTA_SEM_10-HOMBRE SOCIEDAD Y ECOLOGIA', 'NOTA_SEM_10-INTELIGENCIA ARTIFICIAL II', 'NOTA_SEM_10-MULTIMEDIA', 'NOTA_SEM_2-ALGEBRA LINEAL', 'NOTA_SEM_2-CALCULO INTEGRAL', 
-               'NOTA_SEM_2-FISICA I: MECANICA NEWTONIANA', 'NOTA_SEM_2-PROGRAMACION ORIENTADA A OBJETOS', 'NOTA_SEM_3-CALCULO MULTIVARIADO', 'NOTA_SEM_3-ECUACIONES DIFERENCIALES', 'NOTA_SEM_3-FISICA II: ELECTROMAGNETISMO', 'NOTA_SEM_3-PROGRAMACION AVANZADA',
-               'NOTA_SEM_3-TEORIA DE SISTEMAS', 'NOTA_SEM_4-ANALISIS DE SISTEMAS', 'NOTA_SEM_4-MATEMATICAS DISCRETAS', 'NOTA_SEM_4-MATEMATICAS ESPECIALES', 'NOTA_SEM_4-MODELOS DE PROGRAMACION I', 'NOTA_SEM_5-ARQUITECTURA DE COMPUTADORES Y LABORATORIO', 
-               'NOTA_SEM_5-CIENCIAS DE LA COMPUTACION I', 'NOTA_SEM_5-FISICA III: ONDAS Y FISICA MODERNA', 'NOTA_SEM_5-PROBABILIDAD', 'NOTA_SEM_6-CIBERNETICA I', 'NOTA_SEM_6-CIENCIAS DE LA COMPUTACION II', 'NOTA_SEM_6-ESTADISTICA', 
-               'NOTA_SEM_6-HISTORIA Y CULTURA COLOMBIANA', 'NOTA_SEM_6-INVESTIGACION DE OPERACIONES II', 'NOTA_SEM_6-REDES DE COMUNICACIONES I', 'NOTA_SEM_7-CIBERNETICA II', 'NOTA_SEM_7-INVESTIGACION DE OPERACIONES III', 'NOTA_SEM_8-CIBERNETICA III', 
-               'NOTA_SEM_8-INGENIERIA ECONOMICA', 'NOTA_SEM_8-PLANEACION DE SISTEMAS DE INFORMACION', 'NOTA_SEM_9-AUDITORIA I', 'NOTA_SEM_9-FACTORES HUMANOS', 'NOTA_SEM_9-GEOMATICA I', 'NOTA_SEM_9-SISTEMAS OPERATIVOS', 'VECES_SEM_1-CALCULO DIFERENCIAL',
-               'VECES_SEM_1-CATEDRA DEMOCRACIA Y CIUDADANIA', 'VECES_SEM_1-CATEDRA FRANCISCO JOSE DE CALDAS', 'VECES_SEM_1-LOGICA', 'VECES_SEM_1-PRODUCCION Y COMPRENSION DE TEXTOS', 'VECES_SEM_1-PROGRAMACION BASICA', 'VECES_SEM_1-SEMINARIO DE INGENIERIA', 
-               'VECES_SEM_10-AUDITORIA II', 'VECES_SEM_10-DESARROLLO DEL ESPIRITU EMPRESARIAL', 'VECES_SEM_10-GEOMATICA II', 'VECES_SEM_10-GESTION EMPRESARIAL IV', 'VECES_SEM_10-GESTION TECNOLOGICA', 'VECES_SEM_10-HOMBRE SOCIEDAD Y ECOLOGIA', 
-               'VECES_SEM_10-INTELIGENCIA ARTIFICIAL II', 'VECES_SEM_10-MULTIMEDIA', 'VECES_SEM_2-ALGEBRA LINEAL', 'VECES_SEM_2-CALCULO INTEGRAL', 'VECES_SEM_2-FISICA I: MECANICA NEWTONIANA', 'VECES_SEM_2-PROGRAMACION ORIENTADA A OBJETOS', 
-               'VECES_SEM_3-CALCULO MULTIVARIADO', 'VECES_SEM_3-ECUACIONES DIFERENCIALES', 'VECES_SEM_3-FISICA II: ELECTROMAGNETISMO', 'VECES_SEM_3-PROGRAMACION AVANZADA', 'VECES_SEM_3-TEORIA DE SISTEMAS', 'VECES_SEM_4-ANALISIS DE SISTEMAS', 
-               'VECES_SEM_4-MATEMATICAS DISCRETAS', 'VECES_SEM_4-MATEMATICAS ESPECIALES', 'VECES_SEM_4-MODELOS DE PROGRAMACION I', 'VECES_SEM_5-ARQUITECTURA DE COMPUTADORES Y LABORATORIO', 'VECES_SEM_5-CIENCIAS DE LA COMPUTACION I', 
-               'VECES_SEM_5-FISICA III: ONDAS Y FISICA MODERNA', 'VECES_SEM_5-PROBABILIDAD', 'VECES_SEM_6-CIBERNETICA I', 'VECES_SEM_6-CIENCIAS DE LA COMPUTACION II', 'VECES_SEM_6-ESTADISTICA', 'VECES_SEM_6-HISTORIA Y CULTURA COLOMBIANA', 
-               'VECES_SEM_6-INVESTIGACION DE OPERACIONES II', 'VECES_SEM_6-REDES DE COMUNICACIONES I', 'VECES_SEM_7-CIBERNETICA II', 'VECES_SEM_7-INVESTIGACION DE OPERACIONES III', 'VECES_SEM_8-CIBERNETICA III', 'VECES_SEM_8-INGENIERIA ECONOMICA',
-               'VECES_SEM_8-PLANEACION DE SISTEMAS DE INFORMACION', 'VECES_SEM_9-AUDITORIA I', 'VECES_SEM_9-FACTORES HUMANOS', 'VECES_SEM_9-GEOMATICA I', 'VECES_SEM_9-SISTEMAS OPERATIVOS']      
+               'puntos_icfes', 'puntos_homologados']
+        num_var += [col for col in aux if col.startswith('NOTA_SEM')] 
+        num_var += [col for col in aux if col.startswith('VECES_SEM')]   
 
-        aux[num_var] = aux[num_var].fillna(0).replace('NA',0)
+        aux[num_var] = aux[num_var].fillna(0).replace('None',0)
+        print(aux)
         aux[num_var] = aux[num_var].astype(str).astype(float)
         var_const = [col for col in aux.select_dtypes(include=['float']) if aux[col].median()==aux[col].quantile(0.99)]
         aux[var_const] = aux[var_const].apply(add_random_number, axis = 1)
+
+        
         opc_var = aux.columns
         trans = trans.split(',')
         # opc_tran_num = ['logaritmo','estandarizar','minmax','Box-Cox', 'Yeo-Johnson']
@@ -167,12 +156,15 @@ async def token_validation_external(response: Response,data:Data, ingenieria:str
             aux = aux
         else:
             aux = aux[aux['proyecto'] == ingenieria]
+
+        
         # # validacion semestre
-        if semestre == False:
-            aux = aux
-        else:
-            #semestre = str(semestre)
-            aux = aux[aux['semestre_asignatura'] == semestre]
+        # if semestre == False:
+        #     aux = aux
+        # else:
+        #     #semestre = str(semestre)
+        #     ##Pendiente obtener el dato 
+        #     aux = aux[aux['semestre_asignatura'] == semestre]
         
         # # validacion variables (PENDIENTE)
         # # if var_sel == False:
@@ -197,8 +189,7 @@ async def token_validation_external(response: Response,data:Data, ingenieria:str
                         elif trans == 'minmax':
                             aux[col+'_'+trans] = (aux[col] - aux[col].values.min()) / aux[col].values.max()
                             aux[col+'_'+trans].fillna('NaN', inplace=True)
-                        #PENDIENTE
-                        elif trans == 'Box-Cox':
+                        elif trans == 'Box-Cox' and aux.shape[0] > 1:
                             aux[col] = aux[col] + 0.000000001
                             aux[col+'_'+trans], _ = boxcox(aux[col])
                             
@@ -207,6 +198,7 @@ async def token_validation_external(response: Response,data:Data, ingenieria:str
                         else:              
                             print('No se ha encontrado una transformación adecuada. Seleccione una transformación')           
                     print('La variable ' + col + ' ha sido transformada bajo los siguientes criterios ' + str(opc_tran_num))
+        
         
         columns = list(aux.columns)
         values = aux.values.tolist()
@@ -323,8 +315,8 @@ async def transpose_initial_data(response: Response, data:Data, ingenieria:str )
 
         # if write_table == "t":
         #     transpose_df.to_csv(path_output + "/transpose_df",
-        #                         sep=";", encoding='utf8') 
-        transpose_df = transpose_df.fillna("NaN") 
+        #                         sep=";", encoding='utf8')
+        transpose_df = transpose_df.dropna()
         print(transpose_df)
         columns = list(transpose_df.columns)
         values = transpose_df.values.tolist()
