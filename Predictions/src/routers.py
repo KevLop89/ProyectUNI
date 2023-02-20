@@ -48,7 +48,7 @@ async def token_validation_external(request: Request, response: Response, sheet_
         datos_filtro = []
         initial_data = pd.read_excel(
             file.file.read(), sheet_name=sheet_name)
-
+        initial_data = initial_data.fillna("None")
         columns = list(initial_data.columns)
         values = initial_data.values.tolist()
         table = {
@@ -316,7 +316,7 @@ async def transpose_initial_data(response: Response, data:Data, ingenieria:str )
         # if write_table == "t":
         #     transpose_df.to_csv(path_output + "/transpose_df",
         #                         sep=";", encoding='utf8')
-        transpose_df = transpose_df.dropna()
+        transpose_df = transpose_df.fillna("None")
         print(transpose_df)
         columns = list(transpose_df.columns)
         values = transpose_df.values.tolist()
