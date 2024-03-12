@@ -1,6 +1,6 @@
 from cmath import pi
 from pickle import TRUE
-from fastapi import APIRouter
+from fastapi import APIRouter, FastAPI
 from fastapi import status as ResponseStatus
 from fastapi import Request
 from .auth.oauth2 import *
@@ -25,6 +25,8 @@ from scipy.stats import boxcox
 import random
 import requests
 
+from fastapi.middleware.cors import CORSMiddleware
+
 class Data(BaseModel):
     columns: list
     data:list
@@ -34,15 +36,26 @@ def add_random_number(row):
                                    
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# appnn = FastAPI()
+# origins = ["*"]
+# appnn.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
 
 @router.get("/", response_description="Health check")
 async def healthcheck(request: Request, response: Response):
-    return {"status": "ok"}
+    return {"status": "kevin no es senior"}
 
 #primera carga de datos y filtro 
 @router.post("/predictions/excelToArray", response_description="Transforma el excel en array")
-async def token_validation_external(request: Request, response: Response, sheet_name: str, ingenieria: str, file: UploadFile = File(...)):
+async def token_validation_external1(request: Request, response: Response, sheet_name: str, ingenieria: str, file: UploadFile = File(...)):
     #Carga inical de los datos y filtro de busqueda
+    print("Si llego la peticion")
     try:
         iterador_i = 0
         datos_filtro = []
@@ -63,6 +76,7 @@ async def token_validation_external(request: Request, response: Response, sheet_
                     datos_filtro.append(table["data"][iterador_i])
                 iterador_i += 1
                 
+                
             resultado = {
                 "columns": columns,
                 "data": datos_filtro
@@ -72,6 +86,7 @@ async def token_validation_external(request: Request, response: Response, sheet_
             return table
 
     except Exception as e:
+        print("Hola care bola")
         response.status_code = ResponseStatus.HTTP_500_INTERNAL_SERVER_ERROR
         import traceback
         return ErrorResponseModel(
@@ -82,7 +97,7 @@ async def token_validation_external(request: Request, response: Response, sheet_
 
 #limpieza de los datos segun el fintro anterior
 @router.post("/predictions/carga_limpieza", response_description="Limpia el archivo excel con el parametro tipo carrera")
-async def token_validation_external(response: Response,request: Request, data:Data):
+async def token_validation_external2(response: Response,request: Request, data:Data):
     try:
         aux = pd.DataFrame(data.data, columns=data.columns)
         aux = aux.dropna(axis=1, how='all') 
@@ -108,7 +123,8 @@ async def token_validation_external(response: Response,request: Request, data:Da
             )
 
 @router.post("/predictions/new_variables", response_description="Genera las nuevas variables a partir del excel")
-async def token_validation_external(request: Request, response: Response,tipoCarrera: str, file: UploadFile = File(...)):
+# async def token_validation_external3(request: Request, response: Response,tipoCarrera: str, file: UploadFile = File(...)):
+async def token_validation_external3(request: Request, response: Response, file: UploadFile = File(...)):
     try:
         
         if file.filename.endswith('.xlsx'):
@@ -128,7 +144,7 @@ async def token_validation_external(request: Request, response: Response,tipoCar
 
 # trasposicion de la data -  PENDIENTES VARIABLES y semestre_asignatura
 @router.post("/predictions/transform", response_description="Limpia el archivo excel sin parametros")
-async def token_validation_external(response: Response,data:Data, ingenieria:str, trans:str):
+async def token_validation_external4(response: Response,data:Data, ingenieria:str, trans:str):
     try:
         
         aux = pd.DataFrame(data.data, columns=data.columns)

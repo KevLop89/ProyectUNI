@@ -5,15 +5,15 @@ from src.routers import router
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
-middleware = [
-    Middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-]
+# middleware = [
+#     Middleware(
+#         CORSMiddleware,
+#         allow_origins=["*"],
+#         allow_credentials=True,
+#         allow_methods=["*"],
+#         allow_headers=["*"],
+#     )
+# ]
 
 app = FastAPI(
     title="Authentication API",
@@ -21,8 +21,18 @@ app = FastAPI(
     version="1.0",
     openapi_url=None,
     docs_url=None,
-    middleware=middleware
+    # middleware=middleware
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
 
 app.include_router(router)
 
